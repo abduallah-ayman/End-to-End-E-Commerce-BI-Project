@@ -1,0 +1,353 @@
+📦 E_Commerce Database — Design & Architecture Documentation
+📖 Overview
+
+The E_Commerce database is designed as a scalable OLTP system that models a real-world e-commerce platform.
+It covers the full operational lifecycle of an online marketplace, including:
+
+Customers & sellers
+
+Products & inventory
+
+Orders & payments
+
+Logistics & shipment tracking
+
+The design prioritizes:
+
+Data integrity
+
+Clear domain separation
+
+Realistic operational workflows
+
+Ease of future transformation into a Data Warehouse (DW)
+
+This makes the database suitable for production-like simulations, BI reporting, and data engineering projects.
+
+🧩 Schema Organization Strategy
+
+The database is intentionally divided into multiple schemas, each representing a distinct business domain.
+
+Why Use Multiple Schemas?
+Benefit	Explanation
+Logical separation	Each schema represents a clear business area
+Improved readability	Easier to understand, maintain, and debug
+Security readiness	Permissions can be applied per schema
+Scalability	New domains can be added without clutter
+DW compatibility	Mirrors real enterprise database designs
+📂 Schema Breakdown
+🟦 core Schema — Master Entities
+
+Holds core business actors that rarely change.
+
+Tables include:
+
+Customer, CustomerSegment
+
+CustomerAddress, CustomerContact, CustomerLoginHistory
+
+Seller, SellerAddress, SellerContract, SellerRating
+
+Why this design?
+
+Customers and sellers are central entities
+
+Supports one-to-many relationships (multiple addresses, contacts)
+
+Preserves historical and operational data
+
+Prevents data duplication
+
+🟨 ref Schema — Reference Data
+
+Contains lookup and classification tables.
+
+Tables include:
+
+ProductCategory
+
+ProductSubCategory
+
+Purpose:
+
+Ensures consistent categorical values
+
+Simplifies joins and reporting
+
+Keeps transactional tables clean
+
+Ideal candidates for dimension tables in a data warehouse
+
+🟥 sales Schema — Transactions & Revenue
+
+Handles order lifecycle and product sales.
+
+Tables include:
+
+Order, OrderItem
+
+OrderStatusHistory
+
+OrderReturn, OrderDiscount
+
+Product, ProductAttribute
+
+Key Design Decisions:
+
+Order header and line items are separated (classic OLTP pattern)
+
+OrderStatusHistory enables full lifecycle tracking
+
+Prices are stored at order-item level to preserve historical accuracy
+
+Supports discounts, returns, and future promotions
+
+🟩 inventory Schema — Stock Management
+
+Manages physical availability of products.
+
+Tables include:
+
+Warehouse
+
+Inventory
+
+InventoryMovement
+
+Key Concepts:
+
+A product can exist in multiple warehouses
+
+InventoryMovement provides a full audit trail
+
+Inventory quantity is derived, not manually edited
+
+Supports future FIFO/LIFO and valuation logic
+
+🟪 payment Schema — Financial Transactions
+
+Isolates payment processing logic.
+
+Tables include:
+
+PaymentMethod
+
+Payment
+
+PaymentStatusHistory
+
+Why separate payments?
+
+Payments have a different lifecycle than orders
+
+Supports retries, failures, and reconciliation
+
+Essential for auditing and financial reporting
+
+Maps cleanly to fact tables in analytics systems
+
+🟫 logistics Schema — Shipping & Delivery
+
+Handles order fulfillment and delivery tracking.
+
+Tables include:
+
+ShipmentType
+
+Shipment
+
+Design Highlights:
+
+ShipmentType defines delivery constraints and performance expectations
+
+Shipment records track shipping and delivery timelines
+
+Customer ratings allow logistics performance analysis
+
+🔐 Data Integrity & Constraints
+
+The database enforces integrity using:
+
+Primary Keys on all tables
+
+Foreign Keys for relational consistency
+
+CHECK constraints for domain validation
+
+UNIQUE constraints where applicable
+
+This guarantees:
+
+No orphan records
+
+Valid business values
+
+Predictable joins
+
+Reliable analytics
+
+⚙️ Stored Procedures Design
+
+Stored Procedures (SPs) are designed following enterprise OLTP best practices.
+
+🎯 Design Principles
+
+All write operations adhere to:
+
+Atomic transactions (ACID compliance)
+
+Clear business responsibility per procedure
+
+Validation before modification
+
+Centralized error handling
+
+Minimal business logic leakage to application layer
+
+🧱 CRUD Stored Procedures
+
+Basic CRUD SPs are provided for:
+
+Customers
+
+Sellers
+
+Products
+
+Inventory
+
+Reference data
+
+These SPs:
+
+Encapsulate DML logic
+
+Enforce referential rules
+
+Simplify application integration
+
+🔄 Transactional Stored Procedures (Enterprise-Level)
+
+Some business operations are implemented as single transactional units instead of multiple SP calls.
+
+🛒 Order Creation (sales.usp_CreateOrder_Full)
+
+Accepts multiple order items via Table-Valued Parameters (TVP)
+
+Validates customer existence
+
+Validates inventory availability
+
+Inserts order header and items
+
+Updates inventory
+
+Inserts initial order status
+
+Executes in a single transaction
+
+This prevents:
+
+Partial orders
+
+Inventory inconsistencies
+
+Data corruption
+
+💳 Payment Processing (payment.usp_CreatePayment_Full)
+
+Validates order existence
+
+Inserts payment record
+
+Inserts initial payment status
+
+Ensures financial auditability
+
+📦 Shipment Creation (logistics.usp_CreateShipment_Full)
+
+Validates order existence
+
+Creates shipment record
+
+Sets initial shipment status
+
+Supports future status transitions
+
+🧮 Inventory Control
+
+Inventory updates are not allowed directly.
+
+Instead:
+
+All quantity changes go through InventoryMovement
+
+Stock levels are adjusted automatically
+
+Full audit trail is preserved
+
+This reflects real-world warehouse systems.
+
+🗑️ Deletion Strategy
+
+The system uses soft deletes for core entities:
+
+Customers
+
+Sellers
+
+Products
+
+This ensures:
+
+Historical accuracy
+
+Legal & audit compliance
+
+Stable reporting and BI integration
+
+🔄 Post-Generation Enhancements (Planned)
+
+After data insertion, SQL Server can be used to:
+
+Recalculate order totals
+
+Enforce shipment timeline rules
+
+Align payment statuses with business logic
+
+Normalize historical inconsistencies
+
+This separation improves:
+
+Debugging
+
+Transparency
+
+Educational value
+
+🧠 Why This Design Matters
+
+This database:
+
+Reflects enterprise-grade modeling
+
+Is suitable for:
+
+OLTP analysis
+
+BI dashboards
+
+ETL & SSIS projects
+
+Data warehouse modeling (Fact & Dimension mapping)
+
+Demonstrates strong understanding of:
+
+Normalization
+
+Referential integrity
+
+Business domains
+
+Transactional consistency
