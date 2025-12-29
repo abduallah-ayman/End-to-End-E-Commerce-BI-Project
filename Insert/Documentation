@@ -1,0 +1,173 @@
+📥 Data Insertion Strategy (Python → SQL Server)
+Overview
+
+Due to the large volume of generated data (hundreds of thousands to millions of rows), data insertion into SQL Server was handled using Python batch inserts rather than GUI-based tools such as the SQL Server Import & Export Wizard.
+
+This approach provides:
+
+Better performance for large datasets
+
+More control over error handling
+
+Easier debugging and re-execution
+
+🛠️ Tools & Libraries Used
+
+Python
+
+pandas – for reading and preparing Excel data
+
+pyodbc – for connecting to SQL Server
+
+ODBC Driver 17 for SQL Server
+
+🔄 Insertion Method
+
+Each table is inserted using a reusable batch insertion function:
+
+def insert_dataframe(df, table_name, cursor, conn, batch_size=5000):
+    columns = ",".join(df.columns)
+    placeholders = ",".join("?" * len(df.columns))
+    
+    sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
+
+    data = df.values.tolist()
+
+    for i in range(0, len(data), batch_size):
+        batch = data[i:i+batch_size]
+        cursor.executemany(sql, batch)
+        conn.commit()
+
+    print(f"Inserted {len(df)} rows into {table_name}")
+
+Key Characteristics
+
+Batch size = 5,000 rows
+
+Prevents memory overload
+
+Reduces transaction size
+
+Parameterized queries (?)
+
+Prevents SQL injection
+
+Improves execution stability
+
+executemany()
+
+Efficient bulk insertion
+
+Explicit commits
+
+Allows safe partial inserts
+
+Easier recovery on failure
+
+📋 Execution Workflow
+
+Each table is inserted independently in a separate Jupyter notebook cell.
+
+After inserting a table:
+
+The data is validated directly in SQL Server
+
+Foreign key consistency and row counts are checked
+
+This step-by-step approach ensures:
+
+Clear identification of failing tables
+
+Easier debugging of relational issues
+
+⚠️ Error Handling & Recovery Strategy
+
+Due to the complexity and size of the schema, insert failures may occur (e.g. foreign key violations).
+
+When an error occurs:
+
+The running insert process is terminated in SQL Server
+
+The table is truncated or cleared
+
+Identity column is reset:
+
+DBCC CHECKIDENT ('schema.TableName', RESEED, 0);
+
+
+The issue is fixed at the Excel or generation level
+
+Invalid foreign keys
+
+Out-of-range IDs
+
+Missing parent records
+
+The insert process is re-executed
+
+This iterative approach allows:
+
+Fast recovery
+
+No need to regenerate the entire dataset
+
+Isolation of problematic data segments
+
+⚖️ Trade-offs & Known Limitations
+
+❌ No automatic transaction rollback across batches
+→ A failure may leave partial inserts (handled manually)
+
+❌ No dynamic dependency resolution
+→ Parent tables must be inserted before child tables
+
+❌ Data correctness is not enforced at insert time
+→ Business rules are applied later in SQL Server
+
+These trade-offs were intentional to prioritize:
+
+Performance
+
+Simplicity
+
+Debuggability during development
+
+🔧 Post-Insertion Adjustments (Planned)
+
+After all data is successfully inserted:
+
+Business rules will be enforced using SQL Server updates
+
+Examples:
+
+Fix order totals
+
+Align order & shipment timelines
+
+Adjust payment statuses
+
+Enforce realistic status transitions
+
+This separation mirrors real-world pipelines:
+
+Raw ingestion → Validation → Business logic
+
+✅ Why This Approach Was Chosen
+
+SQL Server Import Wizard failed due to missing providers (ACE.OLEDB)
+
+Python provides:
+
+Full control
+
+Reusability
+
+Scalability
+
+The method is suitable for:
+
+OLTP systems
+
+Data warehouse staging layers
+
+ETL pipelines
