@@ -1,0 +1,145 @@
+Staging Layer Documentation
+
+1. Purpose of the Staging Layer
+The staging database represents the first landing zone for data extracted from OLTP source systems into the data warehouse environment. It is designed to temporarily store raw, source-aligned data with minimal to no transformation.
+The staging layer serves as a buffer between operational systems and the Data Warehouse (DWH), ensuring data stability, auditability, and controlled ETL processing.
+________________________________________
+2. Design Principles
+The staging layer follows these core principles:
+•	Source-aligned structure: Tables closely resemble OLTP tables.
+•	No business logic: No joins, aggregations, or calculations.
+•	No constraints: No PKs, FKs, or indexes to allow fast bulk loads.
+•	Auditability: Every record is traceable to a load batch and source.
+•	Re-runnable ETL: Data can be reprocessed without touching OLTP.
+________________________________________
+3. Common Audit & Control Columns
+Every staging table includes the following columns:
+Column Name	Purpose
+LoadDate	Timestamp when the record was loaded into staging
+BatchID	Identifies the ETL batch/run for recovery and tracking
+SourceSystem	Identifies the originating source system
+These columns are mandatory for enterprise-grade ETL monitoring and troubleshooting.
+________________________________________
+4. Customer Domain Tables
+stg.Customer
+Stores raw customer master data.
+Used to populate:
+•	DimCustomer (SCD Type 2)
+________________________________________
+stg.CustomerAddress
+Stores all customer addresses (billing and shipping).
+Used to populate:
+•	DimCustomerAddress or flattened into DimCustomer
+________________________________________
+stg.CustomerContact
+Stores customer contact details such as email and phone.
+Used to populate:
+•	DimCustomerContact or DimCustomer
+________________________________________
+stg.CustomerSegment
+Stores customer segmentation reference data.
+Used to populate:
+•	DimCustomerSegment
+________________________________________
+5. Seller Domain Tables
+stg.Seller
+Stores seller master data.
+Used to populate:
+•	DimSeller (SCD Type 2)
+________________________________________
+
+stg.SellerContract
+Stores seller contract history including commission rates.
+Used to derive:
+•	Historical attributes in DimSeller
+________________________________________
+stg.SellerAddress
+Stores seller location details.
+Used to populate:
+•	DimSeller
+________________________________________
+6. Product Domain Tables
+stg.Product
+Stores raw product master data.
+Used to populate:
+•	DimProduct (SCD Type 2)
+________________________________________
+stg.ProductAttribute
+Stores extensible product attributes (EAV pattern).
+Used to populate:
+•	DimProductAttributes or flattened product dimension
+________________________________________
+stg.ProductCategory
+Stores product category reference data.
+Used to populate:
+•	DimProductCategory
+________________________________________
+stg.ProductSubCategory
+Stores product subcategory reference data.
+Used to populate:
+•	DimProductSubCategory
+________________________________________
+7. Inventory Domain Tables
+stg.Inventory
+Stores current inventory state per product and warehouse.
+Used to populate:
+•	FactInventorySnapshot
+________________________________________
+stg.Warehouse
+Stores warehouse master data.
+Used to populate:
+•	DimWarehouse
+________________________________________
+8. Orders & Sales Domain Tables
+stg.Order
+Stores order header data.
+Used to populate:
+•	FactSales (order-level grain)
+•	Degenerate dimensions (OrderID)
+________________________________________
+stg.OrderItem
+Stores order line items.
+Used to populate:
+•	FactSales (line-level grain)
+________________________________________
+stg.OrderDiscount
+Stores discounts applied at order level.
+Used to derive:
+•	Discount measures in FactSales
+________________________________________
+9. Payment Domain Tables
+stg.Payment
+Stores payment transaction data.
+Used to populate:
+•	FactPayment
+________________________________________
+stg.PaymentMethod
+Stores payment method reference data.
+Used to populate:
+•	DimPaymentMethod
+________________________________________
+10. Logistics Domain Tables
+stg.Shipment
+Stores shipment and delivery details.
+Used to populate:
+•	FactShipment
+________________________________________
+stg.ShipmentType
+Stores shipment type reference data.
+Used to populate:
+•	DimShipmentType
+________________________________________
+11. What the Staging Layer Is NOT Used For
+•	No reporting or analytics
+•	No business rule enforcement
+•	No historical tracking logic (handled in DWH)
+•	No aggregations or joins
+________________________________________
+12. Architectural Importance
+The staging layer:
+•	Protects OLTP systems from repeated ETL queries
+•	Enables restartable and auditable ETL pipelines
+•	Isolates bad or partial loads
+•	Acts as a contractual boundary between source systems and the DWH
+In enterprise BI architectures, direct loading from OLTP to DWH is avoided in favor of a staging layer for reliability, scalability, and governance.
+
