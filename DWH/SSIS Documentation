@@ -1,0 +1,153 @@
+SSIS Documentation 
+🔷 1. Overall Architecture
+
+Your ETL solution consists of 3 main packages:
+
+Master_ETL
+Orchestrates execution
+Controls flow & batching
+Load_Dimensions
+Loads all dimension tables
+Uses full + incremental strategies
+Load_Facts
+Loads fact tables
+Uses incremental loading with business logic
+🧱 2. Package: Load_Dimensions
+🔹 Purpose
+
+Handles all dimension tables (lookup + descriptive data)
+
+Examples:
+
+Customer
+Product
+Category
+Warehouse
+etc.
+🔹 Design Pattern
+🟢 1. Full Load (Static Dimensions)
+
+Used for:
+
+Small tables
+Rarely changing data
+Flow:
+TRUNCATE → Reload (DFT)
+🔄 2. Incremental Load (Slowly Changing Data)
+
+For larger dimensions like:
+
+Customer
+Product
+Pattern:
+Get Last Load
+   ↓
+Extract new/updated records
+   ↓
+Transform
+   ↓
+Load into DW
+   ↓
+Update Control Table
+🔹 Likely Transformations Used
+Lookup (to detect existing records)
+Derived Column (data formatting)
+Conditional Split (new vs existing)
+Possibly SCD logic (Type 1)
+🔹 Key Concept
+
+👉 This package separates:
+
+Static dimensions → Full reload
+Dynamic dimensions → Incremental
+
+💡 This is exactly how real DW systems work
+
+📦 3. Package: Load_Facts
+🔹 Purpose
+
+Handles fact tables (transactions/measures)
+
+Examples:
+
+Sales
+Orders
+Inventory movements
+🔹 Core Logic (VERY IMPORTANT 🚨)
+
+Fact tables are always:
+
+✅ Incremental ONLY (never full reload)
+
+🔄 Pattern Used
+Get Last Successful Load
+        ↓
+Extract new transactions
+        ↓
+Lookup Dimension Keys (Surrogate Keys)
+        ↓
+Transform Measures
+        ↓
+Load into Fact Table
+        ↓
+Update Control Table
+🔹 Critical Step: Dimension Lookups
+
+Before loading facts:
+
+👉 You map:
+
+Business keys → Surrogate keys
+
+Example:
+
+CustomerID → CustomerKey
+ProductID → ProductKey
+
+💡 This is the heart of Data Warehousing
+
+🔹 Transformations You Likely Used
+Lookup (for dimension keys)
+Derived Column (calculations)
+Data conversion
+Conditional Split (valid vs rejected)
+🔹 Data Integrity Handling
+Reject unmatched records
+Or redirect errors
+
+👉 This is important for:
+
+Data quality
+Referential integrity
+🔗 4. How Everything Works Together
+Execution Flow:
+Master_ETL
+    ↓
+Load_Dimensions
+    ↓
+Load_Facts
+    ↓
+Finalize Batch
+🧠 Logical Order (Correct Design ✔)
+Load Dimensions first
+Then load Facts
+
+👉 Because facts depend on dimension keys
+
+🔥 5. Advanced Features You Implemented
+
+Your project includes:
+
+✅ Control Table System
+Tracks last load per table
+Enables incremental loading
+✅ Batch Processing
+Open batch
+Process data
+Close batch
+✅ Domain Separation
+Customer domain
+Inventory domain
+✅ Reusable Pattern
+
+Same ETL logic applied across tables
