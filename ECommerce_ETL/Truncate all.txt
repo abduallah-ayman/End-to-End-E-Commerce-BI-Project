@@ -1,0 +1,9 @@
+DECLARE @sql NVARCHAR(MAX) = '';
+
+SELECT @sql += 'TRUNCATE TABLE [' 
+            + SCHEMA_NAME(schema_id) 
+            + '].[' 
+            + name + '];' + CHAR(13)
+FROM sys.tables;
+
+EXEC sp_executesql @sql;
