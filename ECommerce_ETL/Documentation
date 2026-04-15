@@ -1,0 +1,166 @@
+SSIS Package Documentation – Master_ETL
+🔹 1. Overview
+
+This package is a Master ETL orchestration package that handles:
+
+Full load for dimension/reference tables
+Incremental load for transactional/domain tables
+Batch control & execution tracking
+Error handling and finalization
+
+👉 In short:
+It’s a production-style ETL pipeline with control tables and incremental logic (very strong for interviews).
+
+🔹 2. High-Level Architecture
+Main Components:
+Full Load Section
+Incremental Load Section
+Finalization
+Error Handling (On Failure)
+🔹 3. Control Flow Breakdown
+🧱 A. Full Load Sequence
+
+SEQ_Full_Load_Tables
+
+This handles static/reference tables using:
+
+TRUNCATE → clear old data
+DFT_* → reload data
+Tables Loaded:
+CustomerSegment
+PaymentMethod
+ProductCategory
+ProductSubCategory
+ShipmentType
+Warehouse
+
+👉 Pattern:
+
+TRUNCATE TABLE → Data Flow Task (Reload Data)
+
+✅ This is a full refresh strategy (good for small dimension tables)
+
+🔄 B. Incremental Load Sequence
+
+SEQ_Incremental_Load_Tables
+
+This is the core part of your ETL 💥
+
+It is divided into domains:
+
+👤 1. Customer Domain
+
+SEQ_Customer_Domain
+
+Includes:
+Customer
+CustomerAddress
+CustomerContact
+CustomerLoginHistory
+Pattern used (VERY IMPORTANT 🚨):
+
+For each table:
+
+Get LastSuccessfulLoad
+Initialize Control Record (if not exists)
+Mark as Running
+Load Data (incremental)
+Mark as Success
+(Sometimes) Truncate staging
+
+👉 This means you are using:
+
+Control table / metadata-driven ETL
+Incremental loading based on last load timestamp
+
+💡 Interview insight:
+
+This is a classic CDC (Change Data Capture)-like pattern without using native CDC
+
+📦 2. Inventory Domain
+
+SEQ_Inventory_Domain
+
+Includes:
+Inventory
+InventoryMovement
+
+Same pattern:
+
+Last load tracking
+Incremental extraction
+Status updates
+🔁 C. Common ETL Pattern Used
+
+Across all incremental loads:
+
+[Get Last Load]
+      ↓
+[Initialize if needed]
+      ↓
+[Mark as Running]
+      ↓
+[Load Data]
+      ↓
+[Mark as Success]
+
+✅ This ensures:
+
+Recoverability
+Restartability
+Audit tracking
+🔚 D. Finalization
+
+SEQ_Finalize_Package
+
+Includes:
+
+Close_Batch
+
+👉 Likely used to:
+
+Mark ETL batch as completed
+Log execution end
+❌ E. Error Handling
+
+On Failure
+
+Executes when the package fails
+Used for:
+Logging errors
+Cleaning up
+Marking batch as failed
+🔹 4. Data Flow Tasks (DFT)
+
+Examples:
+
+DFT_Load_CustomerSegment
+DFT_Load_ProductCategory
+etc.
+
+👉 These typically include:
+
+Source (DB / file)
+Transformations (Lookup, Derived Column, etc.)
+Destination (DW tables)
+🔹 5. Key Design Concepts Used
+✅ 1. Full Load vs Incremental Load
+Full load → small lookup tables
+Incremental → large/transactional tables
+✅ 2. Control Table Logic
+
+You are tracking:
+
+Last successful load
+Execution status
+
+👉 This is advanced ETL design
+
+✅ 3. Batch Processing
+Open/Close batch
+Track execution lifecycle
+✅ 4. Restartability
+
+If failure happens:
+
+You can resume from last successful point
